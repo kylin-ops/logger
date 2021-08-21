@@ -72,12 +72,20 @@ func setLogLevel(level string) logrus.Level {
 	}
 }
 
-func NewLogger(level, logPath string, rollTime time.Duration, logCount int, isConsole bool) (*logrus.Logger, error) {
+type Options struct {
+	Level     string
+	Path      string
+	RollTime  time.Duration
+	LogCount  int
+	IsConsole bool
+}
+
+func NewLogger(options *Options) (*logrus.Logger, error) {
 	var err error
 	var log = logrus.New()
 	log.SetReportCaller(true)
 	// 设置日志级别为xx以及以上
-	log.SetLevel(setLogLevel(level))
+	log.SetLevel(setLogLevel(options.Level))
 	//log.AddHook(&defaultFieldHook{})
 	// 设置日志格式为json格式
 	// log.SetFormatter(&logrus.JSONFormatter{
@@ -95,7 +103,7 @@ func NewLogger(level, logPath string, rollTime time.Duration, logCount int, isCo
 	// 设置将日志输出到标准输出（默认的输出为stdout，标准错误）
 	// 日志消息输出可以是任意的io.writer类型
 	// file, _ := os.OpenFile("/tmp/info.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-	if isConsole {
+	if options.IsConsole {
 		log.SetOutput(os.Stdout)
 	} else {
 		file, err := os.OpenFile("/dev/null", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
@@ -104,19 +112,19 @@ func NewLogger(level, logPath string, rollTime time.Duration, logCount int, isCo
 		}
 		log.SetOutput(file)
 	}
-	if logPath != "" {
+	if options.Path != "" {
 		writer, err := rotatelogs.New(
 			//这是分割代码的命名规则，要和下面WithRotationTime时间精度一致
-			logPath+".%Y%m%d%H%M%S",
+			options.Path+".%Y%m%d%H%M%S",
 			// WithLinkName为最新的日志建立软连接，以方便随着找到当前日志文件。
-			rotatelogs.WithLinkName(logPath),
+			rotatelogs.WithLinkName(options.Path),
 			//文件切割之间的间隔。默认情况下，日志每86400秒/一天旋转一次。注意:记住要利用时间。持续时间值。
-			rotatelogs.WithRotationTime(rollTime),
+			rotatelogs.WithRotationTime(options.RollTime),
 			// WithMaxAge和WithRotationCount二者只能设置一个，
 			// WithMaxAge设置文件清理前的最长保存时间，
 			// WithRotationCount设置文件清理前最多保存的个数。 默认情况下，此选项是禁用的。
 			// rotatelogs.WithMaxAge(time.Second*30), //默认每7天清除下日志文件
-			rotatelogs.WithRotationCount(uint(logCount)),
+			rotatelogs.WithRotationCount(uint(options.LogCount)),
 			//rotatelogs.WithMaxAge(-1),       //需要手动禁用禁用  默认情况下不清除日志，
 			// rotatelogs.WithRotationCount(2), //清除除最新2个文件之外的日志，默认禁用
 		)
